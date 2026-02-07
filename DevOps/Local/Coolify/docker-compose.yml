@@ -1,0 +1,73 @@
+services:
+  coolify:
+    image: ghcr.io/coollabsio/coolify:latest
+    container_name: coolify
+    ports:
+      # Host 8000 → Container 8080 (THIS WAS THE FINAL FIX)
+      - "8000:8080"
+    restart: unless-stopped
+    environment:
+      # Laravel
+      APP_KEY: ${APP_KEY}
+
+      # Database
+      DB_HOST: coolify-db
+      DB_PORT: 5432
+      DB_DATABASE: coolify
+      DB_USERNAME: coolify
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      # Persist ONLY storage (do NOT mount /var/www/html)
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/ssh:/var/www/html/storage/app/ssh
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/applications:/var/www/html/storage/app/applications
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/databases:/var/www/html/storage/app/databases
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/services:/var/www/html/storage/app/services
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/backups:/var/www/html/storage/app/backups
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/webhooks-during-maintenance:/var/www/html/storage/app/webhooks-during-maintenance
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/proxy:/var/www/html/storage/app/proxy
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      coolify-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - coolify
+
+  coolify-db:
+    image: postgres:15-alpine
+    container_name: coolify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: coolify
+      POSTGRES_USER: coolify
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coolify -d coolify"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - coolify
+
+  redis:
+    image: redis:7-alpine
+    container_name: coolify-redis
+    restart: unless-stopped
+    command: >
+      sh -c "redis-server --requirepass \"$REDIS_PASSWORD\""
+    volumes:
+      - ${BASE_DIR:-$HOME/runtime_data/delete_me_later/coolify/coolify-local}/data/redis:/data
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true

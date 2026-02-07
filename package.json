@@ -1,0 +1,9 @@
+{
+  "name": "coolify-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "coolify:setup-local": "bash DevOps/Local/Coolify/setup-local.sh",
+    "coolify:setup-local-destroy": "bash DevOps/Local/Coolify/destroy-local.sh"
+  }
+}
